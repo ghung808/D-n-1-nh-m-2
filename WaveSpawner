@@ -1,0 +1,90 @@
+using UnityEngine;
+using System.Collections;
+using UnityEngine.SceneManagement; // Thư viện để chuyển Map
+
+public class WaveSpawner : MonoBehaviour
+{
+    public static int enemiesAlive = 0; // Biến static đếm tổng số quái trên màn hình
+
+    [Header("Cấu hình 7 Wave quái")]
+    public Wave[] waves;
+
+    [Header("Thời gian nghỉ giữa các Wave (Giây)")]
+    public float timeBetweenWaves = 5f;
+
+    private float countdown = 3f;     // Thời gian chờ trước Wave 1
+    private int currentWaveIndex = 0; // Chỉ số Wave hiện tại
+    private bool isSpawning = false;  // Trạng thái đang nhả quái
+
+    void Start()
+    {
+        enemiesAlive = 0; // Reset số lượng quái khi vào màn
+    }
+
+    void Update()
+    {
+        // 1. NẾU CÒN QUÁI TRÊN MÀN HÌNH HOẶC ĐANG NHẢ QUÁI -> DỪNG ĐẾM NGƯỢC (Đúng ý bạn)
+        if (enemiesAlive > 0 || isSpawning)
+        {
+            return;
+        }
+
+        // 2. Nếu đã vượt qua Wave thứ 7 (Thắng trận)
+        if (currentWaveIndex >= waves.Length)
+        {
+            Debug.Log("BẠN ĐÃ CHIẾN THẮNG 7 WAVE! ĐANG CHUYỂN MAP...");
+            NextMap();
+            this.enabled = false;
+            return;
+        }
+
+        // 3. Logic đếm ngược để qua Wave tiếp theo
+        if (countdown <= 0f)
+        {
+            StartCoroutine(SpawnWave());
+            countdown = timeBetweenWaves; // Reset thời gian chờ cho đợt sau
+            return;
+        }
+
+        countdown -= Time.deltaTime;
+    }
+
+    IEnumerator SpawnWave()
+    {
+        isSpawning = true;
+        Wave wave = waves[currentWaveIndex];
+
+        Debug.Log("BẮT ĐẦU: " + wave.waveName + " | Số lượng: " + wave.count);
+
+        for (int i = 0; i < wave.count; i++)
+        {
+            SpawnEnemy(wave.enemyPrefab);
+            yield return new WaitForSeconds(wave.rate); // Nhả dần quái ra
+        }
+
+        currentWaveIndex++;
+        isSpawning = false;
+    }
+
+    void SpawnEnemy(GameObject enemyPrefab)
+    {
+        // Luôn sinh quái tại vị trí của Waypoint (0)
+        Vector3 spawnPosition = Waypoints.points[0].position;
+        Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+
+        enemiesAlive++; // Tăng số lượng quái đang sống lên 1
+    }
+
+    void NextMap()
+    {
+        int nextSceneIndex = SceneManager.GetActiveScene().buildIndex + 1;
+        if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+        {
+            SceneManager.LoadScene(nextSceneIndex);
+        }
+        else
+        {
+            Debug.Log("Bạn đã phá đảo toàn bộ game!");
+        }
+    }
+}
