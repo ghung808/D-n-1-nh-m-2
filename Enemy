@@ -1,0 +1,64 @@
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+    [Header("Chỉ số Quái")]
+    public float speed = 2f;
+    public int hp = 10;
+
+    private Transform target;
+    private int wavePointIndex = 0;
+
+    void Start()
+    {
+        // Đặt điểm hướng tới đầu tiên là Waypoint (0)
+        if (Waypoints.points != null && Waypoints.points.Length > 0)
+        {
+            target = Waypoints.points[0];
+        }
+    }
+
+    void Update()
+    {
+        if (target == null) return;
+
+        // Di chuyển hướng về phía điểm mốc
+        Vector3 dir = target.position - transform.position;
+        transform.Translate(dir.normalized * speed * Time.deltaTime, Space.World);
+
+        // Khi đến sát điểm mốc, chuyển sang điểm tiếp theo
+        if (Vector3.Distance(transform.position, target.position) <= 0.1f)
+        {
+            GetNextWaypoint();
+        }
+    }
+
+    void GetNextWaypoint()
+    {
+        // Nếu chưa đi tới điểm cuối cùng (Waypoint 12)
+        if (wavePointIndex < Waypoints.points.Length - 1)
+        {
+            wavePointIndex++;
+            target = Waypoints.points[wavePointIndex];
+        }
+        else
+        {
+            // Đi hết đường = Về đích thành công
+            WaveSpawner.enemiesAlive--;
+            Debug.Log("Quái đã lọt lưới!");
+            Destroy(gameObject);
+        }
+    }
+
+    // Hàm nhận sát thương (để Trụ gọi tới sau này)
+    public void TakeDamage(int damage)
+    {
+        hp -= damage;
+        if (hp <= 0)
+        {
+            WaveSpawner.enemiesAlive--; // Trừ vào tổng số quái đang sống
+            Debug.Log("Quái đã bị tiêu diệt!");
+            Destroy(gameObject);
+        }
+    }
+}
