@@ -1,0 +1,43 @@
+using UnityEngine;
+
+public class BuildManager : MonoBehaviour
+{
+    public static BuildManager instance;
+
+    void Awake()
+    {
+        if (instance == null) instance = this;
+    }
+
+    [Header("Prefabs Các Loại Tháp")]
+    public GameObject warriorTowerPrefab;
+    public GameObject archerTowerPrefab;
+    public GameObject mageTowerPrefab;
+
+    private BuildingSpot2D selectedSpot;
+
+    public void SelectSpotToUpgrade(BuildingSpot2D spot)
+    {
+        selectedSpot = spot;
+        Debug.Log("Đã chọn thành! Bấm 'S' để Bán thành.");
+    }
+
+    void Update()
+    {
+        // Nhấn phím 'S' để Bán thành đã chọn
+        if (Input.GetKeyDown(KeyCode.S) && selectedSpot != null)
+        {
+            GameObject currentTower = selectedSpot.GetCurrentTower();
+            if (currentTower != null)
+            {
+                SpawnTower st = currentTower.GetComponent<SpawnTower>();
+                int refund = st != null ? st.cost / 2 : 25;
+                PlayerStats.Money += refund;
+                
+                selectedSpot.ClearSpot();
+                selectedSpot = null;
+                Debug.Log("Đã bán thành! Hoàn tiền: $" + refund);
+            }
+        }
+    }
+}
