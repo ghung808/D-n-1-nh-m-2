@@ -1,0 +1,17 @@
+using UnityEngine;
+
+public class SpawnTower : MonoBehaviour
+{
+    public int cost = 50;
+    [HideInInspector] public BuildingSpot2D targetSpot;
+
+    // Gọi hàm này khi Thành bị quái phá hủy
+    public void DestroyTower()
+    {
+        if (targetSpot != null)
+        {
+            targetSpot.ClearSpot();
+        }
+        Destroy(gameObject);
+    }
+}
