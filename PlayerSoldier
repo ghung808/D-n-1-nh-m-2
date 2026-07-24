@@ -1,0 +1,104 @@
+using UnityEngine;
+
+public class PlayerSoldier : MonoBehaviour
+{
+    public float speed = 3f;
+    public float attackRate = 1f;
+
+    [HideInInspector] public int maxHp;
+    [HideInInspector] public int currentHp;
+    [HideInInspector] public int damage;
+    [HideInInspector] public Vector3 rallyPosition;
+
+    private float attackCountdown = 0f;
+    private Transform targetEnemy;
+    private SpawnTower parentTower;
+
+    void Start()
+    {
+        transform.position = transform.parent.position;
+        parentTower = transform.parent.GetComponent<SpawnTower>();
+
+        if (parentTower != null)
+        {
+            parentTower.RegisterSoldier(this);
+        }
+
+        InvokeRepeating("FindEnemy", 0f, 0.2f);
+    }
+
+    public void InitializeStats(int hp, int dmg)
+    {
+        maxHp = hp;
+        currentHp = hp;
+        damage = dmg;
+    }
+
+    public void FullHeal()
+    {
+        currentHp = maxHp;
+    }
+
+    void FindEnemy()
+    {
+        if (targetEnemy != null) return;
+
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        float shortestDistance = Mathf.Infinity;
+        GameObject nearestEnemy = null;
+
+        foreach (GameObject enemy in enemies)
+        {
+            float distanceToEnemy = Vector3.Distance(transform.position, enemy.transform.position);
+            if (distanceToEnemy < shortestDistance && Vector3.Distance(rallyPosition, enemy.transform.position) <= 2.5f)
+            {
+                shortestDistance = distanceToEnemy;
+                nearestEnemy = enemy;
+            }
+        }
+        if (nearestEnemy != null) targetEnemy = nearestEnemy.transform;
+    }
+
+    void Update()
+    {
+        if (targetEnemy == null)
+        {
+            if (Vector3.Distance(transform.position, rallyPosition) > 0.1f)
+            {
+                transform.Translate((rallyPosition - transform.position).normalized * speed * Time.deltaTime, Space.World);
+            }
+            return;
+        }
+
+        if (Vector3.Distance(transform.position, targetEnemy.position) > 0.5f)
+        {
+            transform.Translate((targetEnemy.position - transform.position).normalized * speed * Time.deltaTime, Space.World);
+        }
+        else
+        {
+            if (attackCountdown <= 0f)
+            {
+                Attack();
+                attackCountdown = 1f / attackRate;
+            }
+        }
+        if (attackCountdown > 0f) attackCountdown -= Time.deltaTime;
+    }
+
+    void Attack()
+    {
+        if (targetEnemy == null) return;
+        Enemy enemy = targetEnemy.GetComponent<Enemy>();
+        if (enemy != null) enemy.TakeDamage(damage);
+    }
+
+    public void TakeDamage(int damageAmount)
+    {
+        currentHp -= damageAmount;
+        if (currentHp <= 0)
+        {
+            if (parentTower != null) parentTower.OnSoldierDied(this);
+            Destroy(gameObject);
+        }
+    }
+}
