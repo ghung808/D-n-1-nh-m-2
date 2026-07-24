@@ -1,17 +1,131 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class SpawnTower : MonoBehaviour
 {
-    public int cost = 50;
-    [HideInInspector] public BuildingSpot2D targetSpot;
+    [Header("Cài đặt Giá & Cấp độ")]
+    public int cost = 50;           // Giá mua Cấp 1
+    public int currentLevel = 1;    // Cấp độ hiện tại (1 -> 3)
+    public int maxLevel = 3;        // Cấp độ tối đa
+    public int upgradeCostLvl2 = 60; // Giá nâng cấp lên Cấp 2
+    public int upgradeCostLvl3 = 100;// Giá nâng cấp lên Cấp 3
 
-    // Gọi hàm này khi Thành bị quái phá hủy
+    [Header("Chỉ số Lính Cấp 1")]
+    public int baseHp = 15;
+    public int baseDamage = 2;
+
+    [Header("Tăng chỉ số mỗi cấp")]
+    public int hpPerLevel = 10;     // Mỗi cấp cộng thêm 10 HP
+    public int damagePerLevel = 3;  // Mỗi cấp cộng thêm 3 Damage
+
+    [Header("Hình ảnh Thành theo cấp (Dùng nếu có)")]
+    public Sprite spriteLevel1;
+    public Sprite spriteLevel2;
+    public Sprite spriteLevel3;
+
+    [HideInInspector] public BuildingSpot2D targetSpot;
+    private List<PlayerSoldier> activeSoldiers = new List<PlayerSoldier>();
+    private SpriteRenderer spriteRenderer;
+
+    void Awake()
+    {
+        spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+
+    void Start()
+    {
+        UpdateTowerSprite();
+    }
+
+    // Hàm kiểm tra giá tiền nâng cấp cho cấp tiếp theo
+    public int GetNextUpgradeCost()
+    {
+        if (currentLevel == 1) return upgradeCostLvl2;
+        if (currentLevel == 2) return upgradeCostLvl3;
+        return 0; // Đã đạt Cấp Max
+    }
+
+    // Thực hiện Nâng Cấp Thành
+    public void UpgradeTower()
+    {
+        if (currentLevel >= maxLevel)
+        {
+            Debug.Log("Thành đã đạt Cấp Tối Đa (Level 3)!");
+            return;
+        }
+
+        int nextCost = GetNextUpgradeCost();
+
+        if (PlayerStats.Money >= nextCost)
+        {
+            PlayerStats.Money -= nextCost;
+            currentLevel++;
+
+            Debug.Log("Nâng cấp Thành thành công lên LEVEL " + currentLevel + "!");
+
+            // Cập nhật hình ảnh Thành
+            UpdateTowerSprite();
+
+            // Cập nhật chỉ số trực tiếp cho tất cả Lính đang bảo vệ Thành
+            UpdateSoldiersStats();
+        }
+        else
+        {
+            Debug.Log("Không đủ tiền nâng cấp! Cần: $" + nextCost);
+        }
+    }
+
+    void UpdateTowerSprite()
+    {
+        if (spriteRenderer == null) return;
+
+        if (currentLevel == 1 && spriteLevel1 != null) spriteRenderer.sprite = spriteLevel1;
+        else if (currentLevel == 2 && spriteLevel2 != null) spriteRenderer.sprite = spriteLevel2;
+        else if (currentLevel == 3 && spriteLevel3 != null) spriteRenderer.sprite = spriteLevel3;
+    }
+
+    void UpdateSoldiersStats()
+    {
+        int newMaxHp = baseHp + (currentLevel - 1) * hpPerLevel;
+        int newDamage = baseDamage + (currentLevel - 1) * damagePerLevel;
+
+        foreach (PlayerSoldier soldier in activeSoldiers)
+        {
+            if (soldier != null)
+{
+                soldier.InitializeStats(newMaxHp, newDamage);
+            }
+        }
+    }
+
+    public void RegisterSoldier(PlayerSoldier soldier)
+    {
+        activeSoldiers.Add(soldier);
+        // Khởi tạo chỉ số ban đầu theo cấp độ hiện tại
+        int currentMaxHp = baseHp + (currentLevel - 1) * hpPerLevel;
+        int currentDmg = baseDamage + (currentLevel - 1) * damagePerLevel;
+        soldier.InitializeStats(currentMaxHp, currentDmg);
+    }
+
+    public void OnSoldierDied(PlayerSoldier soldier)
+    {
+        activeSoldiers.Remove(soldier);
+
+        // NẾU CHẾT HẾT PLAYER -> THÀNH VỠ (HỦY BỎ)
+        if (activeSoldiers.Count == 0)
+        {
+            Debug.LogWarning("Thành Cấp " + currentLevel + " đã bị vỡ do chết sạch lính!");
+            if (targetSpot != null)
+            {
+                targetSpot.ClearSpot();
+            }
+            Destroy(gameObject);
+        }
+    }
+
     public void DestroyTower()
     {
-        if (targetSpot != null)
-        {
-            targetSpot.ClearSpot();
-        }
+        if (targetSpot != null) targetSpot.ClearSpot();
         Destroy(gameObject);
     }
 }
